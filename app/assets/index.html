@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<title>一日一笺</title>
+<style>
+  :root{
+    --blue:#3370FF;
+    --blue-soft:#E1EAFF;
+    --ink:#1F2329;
+    --ink-2:#646A73;
+    --ink-3:#8F959E;
+    --line:#E5E6EB;
+    --bg:#F5F6F7;
+    --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Source Han Sans SC",system-ui,sans-serif;
+    font-size:16px;-webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  #app{
+    min-height:100%;display:flex;flex-direction:column;
+    padding-top:env(safe-area-inset-top);
+  }
+  /* ---------- 顶栏 ---------- */
+  .top{padding:18px 20px 8px}
+  .top .date{font-size:13px;color:var(--ink-3);letter-spacing:.3px}
+  .top .title{
+    display:flex;align-items:baseline;gap:10px;margin-top:6px;
+  }
+  .top .title h1{font-size:22px;font-weight:600;margin:0;letter-spacing:.5px}
+  .top .title .streak{font-size:12px;color:var(--blue);background:var(--blue-soft);
+    padding:3px 8px;border-radius:20px;font-weight:500}
+
+  /* ---------- 主体 ---------- */
+  main{flex:1;padding:8px 20px 20px;overflow-y:auto}
+  .view{display:none;animation:fade .22s ease}
+  .view.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* 卡片 */
+  .deck{margin-top:12px}
+  .card{
+    background:var(--card);border-radius:20px;padding:26px 22px 22px;
+    box-shadow:0 2px 14px rgba(31,35,41,.06);
+    position:relative;overflow:hidden;
+  }
+  .card::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:linear-gradient(180deg,#3370FF,#7DA6FF);
+  }
+  .card .meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-3);margin-bottom:16px}
+  .card .meta .dot{width:3px;height:3px;border-radius:50%;background:#C9CDD4}
+  .card .text{
+    font-size:21px;line-height:1.72;letter-spacing:.4px;font-weight:500;
+    white-space:pre-wrap;word-break:break-word;
+  }
+  .card .tag{
+    display:inline-block;margin-top:18px;font-size:12px;color:var(--blue);
+    background:var(--blue-soft);padding:4px 10px;border-radius:20px;
+  }
+
+  /* 回答区 */
+  .answer{margin-top:18px}
+  .answer textarea{
+    width:100%;min-height:88px;border:none;outline:none;resize:none;
+    background:#fff;border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.6;
+    color:var(--ink);font-family:inherit;box-shadow:0 1px 6px rgba(31,35,41,.05);
+  }
+  .answer textarea::placeholder{color:#BFC4CC}
+  .hint{margin:10px 2px 0;font-size:12px;color:var(--ink-3);line-height:1.6}
+
+  .actions{display:flex;gap:10px;margin-top:16px}
+  button{font-family:inherit;font-size:15px;border:none;cursor:pointer;transition:transform .12s,opacity .12s}
+  button:active{transform:scale(.97);opacity:.9}
+  .btn-primary{
+    flex:2;height:48px;border-radius:12px;background:var(--blue);color:#fff;font-weight:600;
+    box-shadow:0 4px 14px rgba(51,112,255,.28);
+  }
+  .btn-ghost{
+    flex:1;height:48px;border-radius:12px;background:#fff;color:var(--ink-2);
+    border:1px solid var(--line);font-weight:500;
+  }
+
+  /* 已完成 */
+  .done{
+    background:#fff;border-radius:20px;padding:26px 22px;margin-top:12px;
+    box-shadow:0 2px 14px rgba(31,35,41,.06);
+  }
+  .done .badge{
+    display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
+    color:#00A870;background:#E8F8F0;padding:6px 12px;border-radius:20px;
+  }
+  .done .q{font-size:15px;color:var(--ink-2);line-height:1.7;margin:18px 0 14px;
+    padding-left:12px;border-left:2px solid var(--line)}
+  .done .a{font-size:17px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+
+  /* 列表 */
+  .adder{display:flex;gap:10px;margin-top:14px;align-items:flex-end}
+  .adder .field{flex:1}
+  .adder .field label{display:block;font-size:12px;color:var(--ink-3);margin-bottom:8px}
+  .adder textarea{
+    width:100%;min-height:56px;border:none;outline:none;resize:none;background:#fff;
+    border-radius:12px;padding:12px 14px;font-size:15px;line-height:1.55;color:var(--ink);
+    font-family:inherit;box-shadow:0 1px 6px rgba(31,35,41,.05);
+  }
+  .adder .add{
+    width:56px;height:56px;border-radius:12px;background:var(--blue);color:#fff;
+    font-size:24px;line-height:1;font-weight:400;box-shadow:0 4px 14px rgba(51,112,255,.28);
+  }
+  .list{margin-top:16px}
+  .row{
+    background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;
+    display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 6px rgba(31,35,41,.04);
+  }
+  .row .body{flex:1;min-width:0}
+  .row .t{font-size:15px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
+  .row .s{font-size:11px;color:var(--ink-3);margin-top:6px}
+  .row .del{
+    background:transparent;color:#C9CDD4;font-size:18px;line-height:1;padding:2px 4px;
+  }
+  .row.read .t{color:var(--ink-2)}
+
+  .echo{
+    background:#fff;border-radius:16px;padding:16px 18px;margin-bottom:12px;
+    box-shadow:0 1px 6px rgba(31,35,41,.04);
+  }
+  .echo .d{font-size:12px;color:var(--ink-3);margin-bottom:10px;letter-spacing:.3px}
+  .echo .q{font-size:14px;color:var(--ink-3);line-height:1.6;margin:0 0 10px;
+    padding-left:10px;border-left:2px solid var(--line)}
+  .echo .a{font-size:16px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+
+  .empty{padding:60px 20px;text-align:center;color:var(--ink-3);font-size:14px;line-height:1.9}
+  .empty .big{font-size:40px;margin-bottom:14px;opacity:.35}
+  .sec-title{font-size:12px;color:var(--ink-3);margin:22px 2px 10px;letter-spacing:.5px}
+
+  /* 底部导航 */
+  nav{
+    display:flex;background:#fff;border-top:1px solid var(--line);
+    padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  nav .item{
+    flex:1;text-align:center;padding:6px 0;color:var(--ink-3);font-size:11px;
+    display:flex;flex-direction:column;gap:3px;align-items:center;
+  }
+  nav .item .ico{font-size:18px;line-height:1;filter:grayscale(1);opacity:.5}
+  nav .item.on{color:var(--blue);font-weight:600}
+  nav .item.on .ico{filter:none;opacity:1}
+
+  .toast{
+    position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(10px);
+    background:rgba(31,35,41,.88);color:#fff;font-size:13px;padding:9px 16px;border-radius:20px;
+    opacity:0;pointer-events:none;transition:.22s;white-space:nowrap;
+  }
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="date" id="dateLine"></div>
+    <div class="title">
+      <h1>一日一笺</h1>
+      <span class="streak" id="streak" style="display:none"></span>
+    </div>
+  </div>
+
+  <main>
+    <!-- 今日 -->
+    <section class="view on" id="view-today">
+      <div id="todayBody"></div>
+    </section>
+
+    <!-- 卡池 -->
+    <section class="view" id="view-pool">
+      <div class="adder">
+        <div class="field">
+          <label>往池子里丢一张</label>
+          <textarea id="newCard" placeholder="一句话就够，越短越容易回看"></textarea>
+        </div>
+        <button class="add" id="addBtn">+</button>
+      </div>
+      <div class="hint">卡池只存在这台手机里，不联网、不上传。</div>
+      <div class="list" id="poolList"></div>
+    </section>
+
+    <!-- 回响 -->
+    <section class="view" id="view-echo">
+      <div id="echoList"></div>
+    </section>
+  </main>
+
+  <nav>
+    <div class="item on" data-view="today"><span class="ico">▤</span>今日</div>
+    <div class="item" data-view="pool"><span class="ico">☰</span>卡池</div>
+    <div class="item" data-view="echo"><span class="ico">✦</span>回响</div>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "onecard.v1";
+  var seedCards = [
+    {text:"我收集了多少东西，却一次也没再打开过？", tag:"起点"},
+    {text:"如果今天只能留下一句话，会是哪句？", tag:"日常"},
+    {text:"最近一次改变主意，是因为看到了什么？", tag:"回看"}
+  ];
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){
+        var d = JSON.parse(raw);
+        if(d && d.cards) return d;
+      }
+    }catch(e){}
+    var fresh = {cards:[], logs:{}, v:1};
+    seedCards.forEach(function(s,i){
+      fresh.cards.push({id:"s"+i, text:s.text, tag:s.tag, createdAt:Date.now(), shown:0});
+    });
+    return fresh;
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  var state = load();
+
+  /* ---------- 工具 ---------- */
+  function pad(n){ return n<10?("0"+n):(""+n); }
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  }
+  function prettyDate(k){
+    var p = k.split("-");
+    var w = ["日","一","二","三","四","五","六"];
+    var d = new Date(+p[0], +p[1]-1, +p[2]);
+    return p[1]+" 月 "+p[2]+" 日 · 星期"+w[d.getDay()];
+  }
+  function dayIndex(){
+    return Math.floor(Date.now()/86400000);
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function toast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("on");
+    clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove("on"); }, 1600);
+  }
+  function byId(id){
+    for(var i=0;i<state.cards.length;i++) if(state.cards[i].id===id) return state.cards[i];
+    return null;
+  }
+
+  /* 当天抽卡：先看是否已锁定，再按日序轮转，跳过今天跳过的 */
+  function pickCard(){
+    var key = todayKey();
+    var log = state.logs[key];
+    if(log && log.cardId && byId(log.cardId)) return byId(log.cardId);
+    if(!state.cards.length) return null;
+    var skipped = (log && log.skipped) || [];
+    var pool = state.cards.filter(function(c){ return skipped.indexOf(c.id) < 0; });
+    if(!pool.length) pool = state.cards;
+    var idx = (dayIndex() + skipped.length) % pool.length;
+    return pool[idx];
+  }
+  function logToday(){
+    var key = todayKey();
+    if(!state.logs[key]) state.logs[key] = {skipped:[]};
+    return state.logs[key];
+  }
+
+  /* ---------- 渲染 ---------- */
+  function renderStreak(){
+    var el = document.getElementById("streak");
+    var keys = Object.keys(state.logs).filter(function(k){ return state.logs[k].answer; }).sort();
+    if(keys.length < 2){ el.style.display="none"; return; }
+    // 从最近一天往回数连续天数
+    var n = 0, cur = new Date();
+    for(;;){
+      var k = cur.getFullYear()+"-"+pad(cur.getMonth()+1)+"-"+pad(cur.getDate());
+      if(state.logs[k] && state.logs[k].answer){ n++; cur.setDate(cur.getDate()-1); }
+      else break;
+    }
+    if(n >= 2){ el.textContent = "连续 "+n+" 天"; el.style.display=""; }
+    else el.style.display="none";
+  }
+
+  function renderToday(){
+    document.getElementById("dateLine").textContent = prettyDate(todayKey());
+    var body = document.getElementById("todayBody");
+    var key = todayKey();
+    var log = state.logs[key];
+
+    if(!state.cards.length){
+      body.innerHTML = '<div class="empty"><div class="big">▤</div>池子是空的。<br>先去「卡池」丢一句话进来。</div>';
+      return;
+    }
+
+    var card = pickCard();
+
+    if(log && log.answer){
+      body.innerHTML =
+        '<div class="done">'+
+          '<div class="badge">✓ 今日已完成</div>'+
+          '<div class="q">'+esc(card.text)+'</div>'+
+          '<div class="a">'+esc(log.answer)+'</div>'+
+        '</div>'+
+        '<div class="hint">明天会浮出下一张。现在可以关掉它，去做点别的。</div>';
+      return;
+    }
+
+    body.innerHTML =
+      '<div class="deck"><div class="card">'+
+        '<div class="meta"><span>今日一笺</span><span class="dot"></span>'+
+          '<span>池中 '+state.cards.length+' 张</span></div>'+
+        '<div class="text">'+esc(card.text)+'</div>'+
+        (card.tag? '<div class="tag">'+esc(card.tag)+'</div>' : '')+
+      '</div></div>'+
+      '<div class="answer">'+
+        '<textarea id="ans" placeholder="只写一句，不写也行"></textarea>'+
+        '<div class="hint">写下的一句会存进「回响」，以后翻得到。</div>'+
+      '</div>'+
+      '<div class="actions">'+
+        '<button class="btn-ghost" id="skipBtn">换一张</button>'+
+        '<button class="btn-primary" id="saveBtn">收下</button>'+
+      '</div>';
+
+    document.getElementById("saveBtn").onclick = function(){
+      var v = document.getElementById("ans").value.trim();
+      var l = logToday();
+      l.cardId = card.id;
+      l.answer = v || "（今天没写，只是读了一遍）";
+      l.at = Date.now();
+      card.shown = (card.shown||0) + 1;
+      save(); renderToday(); renderStreak(); renderPool(); renderEcho();
+      toast("已收进回响");
+    };
+    document.getElementById("skipBtn").onclick = function(){
+      var l = logToday();
+      l.skipped = l.skipped || [];
+      if(l.skipped.indexOf(card.id) < 0) l.skipped.push(card.id);
+      if(l.skipped.length >= state.cards.length){
+        l.skipped = [];
+        toast("只剩这一张了");
+      }
+      save(); renderToday();
+    };
+  }
+
+  function renderPool(){
+    var box = document.getElementById("poolList");
+    var readSet = {};
+    Object.keys(state.logs).forEach(function(k){
+      var l = state.logs[k];
+      if(l.answer && l.cardId) readSet[l.cardId] = true;
+    });
+    if(!state.cards.length){
+      box.innerHTML = '<div class="empty"><div class="big">☰</div>还没有卡。<br>上面写一句，点 + 丢进来。</div>';
+      return;
+    }
+    var html = '<div class="sec-title">卡池 · '+state.cards.length+' 张</div>';
+    state.cards.slice().reverse().forEach(function(c){
+      var read = !!readSet[c.id];
+      html += '<div class="row'+(read?' read':'')+'">'+
+        '<div class="body">'+
+          '<div class="t">'+esc(c.text)+'</div>'+
+          '<div class="s">'+(read?'已回过':'未回过')+(c.tag?' · '+esc(c.tag):'')+'</div>'+
+        '</div>'+
+        '<button class="del" data-id="'+c.id+'">×</button>'+
+      '</div>';
+    });
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.querySelectorAll(".del"), function(b){
+      b.onclick = function(){
+        var id = b.getAttribute("data-id");
+        state.cards = state.cards.filter(function(c){ return c.id !== id; });
+        Object.keys(state.logs).forEach(function(k){
+          if(state.logs[k].cardId === id) delete state.logs[k].cardId;
+        });
+        save(); renderPool(); renderToday();
+        toast("已删掉");
+      };
+    });
+  }
+
+  function renderEcho(){
+    var box = document.getElementById("echoList");
+    var keys = Object.keys(state.logs).filter(function(k){ return state.logs[k].answer; }).sort().reverse();
+    if(!keys.length){
+      box.innerHTML = '<div class="empty"><div class="big">✦</div>还没有回响。<br>今天的卡，写一句就有了。</div>';
+      return;
+    }
+    var html = '<div class="sec-title">回响 · '+keys.length+' 条</div>';
+    keys.forEach(function(k){
+      var l = state.logs[k];
+      var c = byId(l.cardId);
+      html += '<div class="echo">'+
+        '<div class="d">'+prettyDate(k)+'</div>'+
+        (c? '<div class="q">'+esc(c.text)+'</div>' : '')+
+        '<div class="a">'+esc(l.answer)+'</div>'+
+      '</div>';
+    });
+    box.innerHTML = html;
+  }
+
+  /* ---------- 交互 ---------- */
+  var navs = document.querySelectorAll("nav .item");
+  Array.prototype.forEach.call(navs, function(it){
+    it.onclick = function(){
+      var v = it.getAttribute("data-view");
+      Array.prototype.forEach.call(navs, function(x){ x.classList.remove("on"); });
+      it.classList.add("on");
+      Array.prototype.forEach.call(document.querySelectorAll(".view"), function(s){
+        s.classList.toggle("on", s.id === "view-"+v);
+      });
+      document.querySelector("main").scrollTop = 0;
+      if(v === "pool") renderPool();
+      if(v === "echo") renderEcho();
+      if(v === "today") renderToday();
+    };
+  });
+
+  document.getElementById("addBtn").onclick = function(){
+    var ta = document.getElementById("newCard");
+    var v = ta.value.trim();
+    if(!v){ toast("写一句再丢"); return; }
+    var dup = state.cards.some(function(c){ return c.text === v; });
+    if(dup){ toast("这句已经在池子里了"); return; }
+    state.cards.push({id:"c"+Date.now(), text:v, tag:"", createdAt:Date.now(), shown:0});
+    ta.value = "";
+    save(); renderPool(); renderToday(); renderStreak();
+    toast("丢进去了");
+  };
+
+  renderToday(); renderStreak(); renderPool(); renderEcho();
+})();
+</script>
+</body>
+</html>
